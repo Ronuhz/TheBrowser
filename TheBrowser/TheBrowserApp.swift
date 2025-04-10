@@ -9,9 +9,19 @@ import SwiftUI
 
 @main
 struct TheBrowserApp: App {
+    @State private var browser: Browser = Browser()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .containerBackground(.ultraThinMaterial, for: .window)
+                .toolbarBackgroundVisibility(
+                                    .hidden, for: .windowToolbar
+                                )
         }
+        .defaultSize(width: 1000, height: 800)
+        .windowStyle(.hiddenTitleBar)
+        .windowBackgroundDragBehavior(.enabled)
+        .environment(\.browser, browser)
     }
 }
