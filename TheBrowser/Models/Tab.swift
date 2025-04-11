@@ -10,8 +10,14 @@ import WebKit
 
 struct Tab: Identifiable, Equatable {
     let id: UUID = UUID()
+    
+    var title: String = "Loading..."
+    var favicon: URL? = nil
     var url: URL
     var webView: WKWebView? = WKWebView()
+    
+    var hasLoaded: Bool = false
+    var isLoading: Bool = false
     
     static func == (lhs: Tab, rhs: Tab) -> Bool {
         lhs.id == rhs.id

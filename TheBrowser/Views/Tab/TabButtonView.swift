@@ -38,7 +38,7 @@ struct TabButtonView: View {
             browser.addressBarText = tab.url.host ?? "New Tab"
         } label: {
             HStack {
-               FaviconView(url: faviconURL)
+                FaviconView(url: faviconURL)
                             
                 if title == "Loading..." {
                     PageLoadingTabAnimationView()

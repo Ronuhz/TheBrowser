@@ -14,14 +14,12 @@ struct TheBrowserApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .containerBackground(.ultraThinMaterial, for: .window)
-                .toolbarBackgroundVisibility(
-                                    .hidden, for: .windowToolbar
-                                )
+                .containerBackground(.thinMaterial, for: .window)
+                .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
         }
+        .environment(\.browser, browser)
         .defaultSize(width: 1000, height: 800)
         .windowStyle(.hiddenTitleBar)
         .windowBackgroundDragBehavior(.enabled)
-        .environment(\.browser, browser)
     }
 }

@@ -8,10 +8,10 @@
 import SwiftUI
 
 struct TabModifier: ViewModifier {
-    let selected: Bool
+    let isSelected: Bool
     
-    init(_ selected: Bool) {
-        self.selected = selected
+    init(_ isSelected: Bool) {
+        self.isSelected = isSelected
     }
     
     func body(content: Content) -> some View {
@@ -19,7 +19,7 @@ struct TabModifier: ViewModifier {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10)
             .padding(.vertical, 10)
-            .background(.gray.opacity(selected ? 0.6 : 0))
+            .background(.gray.opacity(isSelected ? 0.6 : 0))
             .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
