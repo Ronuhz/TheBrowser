@@ -17,7 +17,11 @@ struct ReloadButton: View {
     
     var body: some View {
         Button {
-            browser.reloadCurrentTab()
+            if icon == "xmark" {
+                browser.stopLoadingCurrentTab()
+            } else {
+                browser.reloadCurrentTab()
+            }
         } label: {
             Label("Reload", systemImage: icon)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .centerFirstTextBaseline)

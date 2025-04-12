@@ -8,10 +8,17 @@
 import SwiftUI
 
 struct FaviconView: View {
-    let faviconURL: URL?
+    let tabID: Tab.ID
     
-    init(url faviconURL: URL?) {
-        self.faviconURL = faviconURL
+    init(for tabID: Tab.ID) {
+        self.tabID = tabID
+    }
+    
+    @Environment(\.browser) private var browser
+    
+    var faviconURL: URL? {
+        guard let currentTab = browser.tabs.first(where: { $0.id == tabID }) else { return nil }
+        return currentTab.favicon
     }
     
     var body: some View {
@@ -34,5 +41,7 @@ struct FaviconView: View {
 }
 
 #Preview {
-    FaviconView(url: .init(string: "https://apple.com/favicon.ico")!)
+    @Previewable @State var browser: Browser = Browser()
+    FaviconView(for: .init())
+        .environment(\.browser, browser)
 }

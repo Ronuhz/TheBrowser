@@ -16,51 +16,34 @@ struct TabButtonView: View {
         browser.selectedTab == tab.id
     }
     
-    var title: String {
-        guard let currentTab = browser.tabs.first(where: { $0.id == tab.id }) else {
-            return "Error"
-        }
-        
-        return currentTab.title
-    }
-    
-    var faviconURL: URL? {
-        guard let currentTab = browser.tabs.first(where: { $0.id == tab.id }) else {
-            return nil
-        }
-        
-        return currentTab.favicon
-    }
+    @State private var isHoveringOverTabButton: Bool = false
     
     var body: some View {
         Button {
             browser.selectedTab = tab.id
-            browser.addressBarText = tab.url.host ?? "New Tab"
         } label: {
             HStack {
-                FaviconView(url: faviconURL)
+                FaviconView(for: tab.id)
                             
-                if title == "Loading..." {
-                    PageLoadingTabAnimationView()
-                        .padding(.leading, 10)
-                } else {
-                    Text(title)
-                        .lineLimit(1)
-                }
+                PageTabTitleView(for: tab.id)
                 
                 Spacer()
                 
-                if isSelected {
+                if isSelected || isHoveringOverTabButton {
                     Button("Close", systemImage: "xmark") {
                         browser.closeTab(tab)
                     }
+                    .fontWeight(.bold)
                     .labelStyle(.iconOnly)
                     .buttonStyle(.plain)
                 }
             }
             .frame(maxWidth: .infinity)
-            .modifier(TabModifier(isSelected))
+            .modifier(TabModifier(isSelected, isHoveringOverTabButton))
             .contentShape(Rectangle())
+            .onHover { value in
+                isHoveringOverTabButton = value
+            }
         }
         .buttonStyle(.plain)
     }
@@ -68,6 +51,6 @@ struct TabButtonView: View {
 
 #Preview {
     @Previewable @State var browser: Browser = Browser()
-    TabButtonView(tab: .init(url: URL(string: "https://apple.com")!))
+    TabButtonView(tab: .init(url: URL(string: "https://www.apple.com/")!))
         .environment(\.browser, browser)
 }

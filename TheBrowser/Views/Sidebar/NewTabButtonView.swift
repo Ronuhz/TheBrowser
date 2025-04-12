@@ -10,8 +10,10 @@ import SwiftUI
 struct NewTabButtonView: View {
     @Environment(\.browser) private var browser
     
-    var body: some View {
-        Button(action: browser.addTab) {
+    var body:    some View {
+        Button {
+            browser.isSearchBarOpen = true
+        } label: {
             HStack(spacing: 0) {
                 Image(systemName: "plus")
                     .padding(8)

@@ -14,33 +14,55 @@ extension EnvironmentValues {
 
 @Observable
 class Browser {
+    var isSidebarOpen: Bool = true
+    var isSearchBarOpen: Bool = true
+    
 //    MARK: - Adress Bar
-    var addressBarText: String = ""
+    var addressBarText: String {
+        get {
+            guard let currentTab = getCurrentTab(), let url = currentTab.webView?.url else { return "" }
+            return url.absoluteString
+        }
+        
+        set (newValue) {
+            
+        }
+    }
     
 //    MARK: - Tab Handling
     
 //    Open Tabs
-    var tabs: [Tab] = [
-        Tab(url: URL(string: "https://duckduckgo.com")!),
-        Tab(url: URL(string: "https://apple.com")!),
-        Tab(url: URL(string: "https://youtube.com")!),
-    ]
+    var tabs: [Tab] = []
     
 //    Currently active tab
     var selectedTab: Tab.ID = .init()
     
 //    MARK: - Tab CRUD
     func addTab() {
-        let newTab = Tab(url: URL(string: "https://duckduckgo.com")!)
+        let newTab = Tab(url: URL(string: "https://google.com")!)
         tabs.insert(newTab, at: 0)
         selectedTab = newTab.id
-        addressBarText = newTab.url.host ?? "New Tab"
+    }
+    
+    func addTab(searchTerm: String) {
+        let encodedTerm = searchTerm.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? searchTerm
+        let newTab = Tab(url: URL(string: "https://www.google.com/search?q=\(encodedTerm)")!)
+        tabs.insert(newTab, at: 0)
+        selectedTab = newTab.id
+    }
+    
+    func addTab(url: URL) {
+        let newTab = Tab(url: url)
+        tabs.insert(newTab, at: 0)
+        selectedTab = newTab.id
     }
     
     func closeTab(_ tab: Tab) {
-        tabs.removeAll { $0.id == tab.id }
-        if selectedTab == tab.id, let first = tabs.first {
-            selectedTab = first.id
+        tab.webView?.pauseAllMediaPlayback {
+            self.tabs.removeAll { $0.id == tab.id }
+            if self.selectedTab == tab.id, let first = self.tabs.first {
+                self.selectedTab = first.id
+            }
         }
     }
     
@@ -54,7 +76,12 @@ class Browser {
         }
     }
     
-//    MARK: - Tab Navigation
+    func stopLoadingCurrentTab() {
+        guard let currentTab = getCurrentTab() else { return }
+        currentTab.webView?.stopLoading()
+    }
+    
+//    MARK: - Tab Navigation/Action
     func reloadCurrentTab() {
         guard let currentTab = getCurrentTab() else { return }
         currentTab.webView?.reload()
@@ -70,26 +97,8 @@ class Browser {
         currentTab.webView?.goForward()
     }
     
-    #warning("not working separate URL normalization")
-    func setCurrentTabAddress(to newAddress: String) {
-        guard var currentTab = getCurrentTab() else { return }
-        let trimmedAddress = newAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-        let fullAddress: String
-        if trimmedAddress.hasPrefix("http://") || trimmedAddress.hasPrefix("https://") {
-           fullAddress = trimmedAddress
-        } else {
-           fullAddress = "https://" + trimmedAddress
-        }
-        
-        if let url = URL(string: fullAddress) {
-            currentTab.hasLoaded = false
-            currentTab.url = url
-            
-        }
+//    MARK: - Init
+    init() {
+        self.selectedTab = self.tabs.first?.id ?? .init()
     }
-    
-    //    MARK: - Init
-        init() {
-            self.selectedTab = self.tabs.first?.id ?? .init()
-        }
 }

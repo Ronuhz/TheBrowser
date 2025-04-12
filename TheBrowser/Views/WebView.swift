@@ -13,6 +13,7 @@ struct WebView: NSViewRepresentable {
     static let sharedProcessPool = WKProcessPool()
     
     @Binding var tab: Tab
+    @Environment(\.browser) private var browser
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -20,18 +21,20 @@ struct WebView: NSViewRepresentable {
         config.websiteDataStore = .default()
         config.suppressesIncrementalRendering = false
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
-        config.applicationNameForUserAgent = "TheBrowser"
         
-        // Create the WKWebView
         let wkWebView = WKWebView(frame: .zero, configuration: config)
         wkWebView.allowsMagnification = true
         wkWebView.allowsBackForwardNavigationGestures = true
-//        wkWebView.configuration.preferences.isElementFullscreenEnabled = true
+        wkWebView.configuration.preferences.isElementFullscreenEnabled = true
         wkWebView.navigationDelegate = context.coordinator
-//        wkWebView.customUserAgent = ""
+        wkWebView.isInspectable = true
+        wkWebView.customUserAgent = """
+                Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
+                AppleWebKit/605.1.15 (KHTML, like Gecko) \
+                Version/18.4 Safari/605.1.15
+                """
         
-        // Load the request.
-        let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 20)
+        let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60)
         if !tab.hasLoaded {
             wkWebView.load(request)
             DispatchQueue.main.async {
@@ -39,7 +42,6 @@ struct WebView: NSViewRepresentable {
             }
         }
         
-        // Save a reference to the WKWebView so the parent view can control it.
         DispatchQueue.main.async {
             tab.webView = wkWebView
         }
@@ -47,11 +49,12 @@ struct WebView: NSViewRepresentable {
         return wkWebView
     }
     
-    func updateNSView(_ nsView: WKWebView, context: Context) {
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        webView.isHidden = browser.selectedTab != tab.id
         // Check if the URL has changed and reload if needed
-        if nsView.url != tab.url && !tab.hasLoaded{
-            let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 20)
-            nsView.load(request)
+        if webView.url != tab.url && !tab.hasLoaded{
+            let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60)
+            webView.load(request)
             DispatchQueue.main.async {
                 tab.hasLoaded = true
             }
@@ -69,40 +72,68 @@ struct WebView: NSViewRepresentable {
             self.parent = parent
         }
         
-        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-            DispatchQueue.main.async {
-                self.parent.tab.isLoading = true
-                self.parent.tab.title = "Loading..."
-            }
-        }
-        
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            DispatchQueue.main.async {
-                self.parent.tab.isLoading = false
-                self.parent.tab.title = webView.title ?? "Loading..."
-            }
-            
+//        MARK: - Favicon, Title and Navigation Helpers
+        func loadFavicon(_ webView: WKWebView) {
             if let baseURL = webView.url, let host = baseURL.host {
-                // Fallback to default favicon, e.g., "https://example.com/favicon.ico"
                 let defaultFavicon = URL(string: "https://\(host)/favicon.ico")
-                DispatchQueue.main.async {
-                    self.parent.tab.favicon = defaultFavicon
+                if self.parent.tab.favicon != defaultFavicon {
+                    DispatchQueue.main.async {
+                        self.parent.tab.favicon = defaultFavicon
+                    }
                 }
             }
         }
+        func startNavigation(_ webView: WKWebView) {
+            DispatchQueue.main.async {
+                self.parent.tab.isLoading = true
+            }
+            
+            loadFavicon(webView)
+        }
+        func navigationCompleted(_ webView: WKWebView) {
+            DispatchQueue.main.async {
+                self.parent.tab.isLoading = false
+            }
+            
+            loadFavicon(webView)
+        }
         
+//        MARK: - Early Navigation Starts
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+           startNavigation(webView)
+        }
+        
+//        MARK: - Early Navigation Redirect
+        func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
+            startNavigation(webView)
+            if let url = webView.url {
+                self.parent.tab.webView?.load(URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60))
+            }
+        }
+        
+//        MARK: - Successful Navigation
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            navigationCompleted(webView)
+        }
+        
+//        MARK: - Failed Navigation
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            DispatchQueue.main.async {
-                self.parent.tab.isLoading = false
-                self.parent.tab.title = "Error"
-            }
+            navigationCompleted(webView)
         }
         
+//        MARK: - Early Navigation failed
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            DispatchQueue.main.async {
-                self.parent.tab.isLoading = false
-                self.parent.tab.title = "Error"
-            }
+            navigationCompleted(webView)
         }
+        
+//        MARK: - Open link in New Tab
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+                if navigationAction.targetFrame == nil {
+                    if let url = navigationAction.request.url {
+                        self.parent.browser.addTab(url: url)
+                    }
+                }
+                decisionHandler(.allow)
+            }
     }
 }

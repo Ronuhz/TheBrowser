@@ -20,7 +20,7 @@ struct PageLoadingProgressView: View {
         ProgressView(value: progress, total: 1)
             .controlSize(.mini)
             .tint(.white)
-            .padding(8)
+            .padding(.horizontal, 5)
     }
 }
 

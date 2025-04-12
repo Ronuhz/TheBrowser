@@ -24,8 +24,8 @@ struct PageLoadingTabAnimationView: View {
                 .offset(x: -offset)
                 .animation(Animation.timingCurve(0.2, 0.8, 0.2, 1.0).repeatForever().speed(0.5), value: offset)
         }
-        .task {
-            offset = offset == 0 ? 20 : 0
+        .onAppear {
+            offset = 20
         }
     }
 }

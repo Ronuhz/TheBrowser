@@ -9,8 +9,6 @@ import SwiftUI
 import WebKit
 
 struct ContentView: View {
-    @State private var isShowingSidebar: Bool = true
-    
     @Environment(\.browser) private var browser
     
     var body: some View {
@@ -18,7 +16,7 @@ struct ContentView: View {
         ZStack {
             HStack {
 //                MARK: - Sidebar
-                if isShowingSidebar {
+                if browser.isSidebarOpen {
                     VStack {
                         SearchBarView()
 
@@ -26,14 +24,15 @@ struct ContentView: View {
                         
                         NewTabButtonView()
                         
-                        #warning("Blocks drag window from anywhere")
                         ScrollView {
                             VStack {
                                 ForEach(browser.tabs) { tab in
                                     TabButtonView(tab: tab)
                                 }
                             }
+                            .padding(.horizontal, 10)
                         }
+                        .padding(.horizontal, -10)
                     }
                     .modifier(SidebarContainerModifier())
                     .transition(.move(edge: .leading).combined(with: .opacity))
@@ -47,16 +46,15 @@ struct ContentView: View {
                                 .opacity(browser.selectedTab != tab.id ? 0 : 1)
                                 .allowsHitTesting(browser.selectedTab == tab.id)
                                 .zIndex(browser.selectedTab == tab.id ? 1 : -10)
-                                .padding(.top, -12) // makes top padding equal to trailing, bottom and leading (18 px)
                         }
                     }
                 } else {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(.regularMaterial)
                         .modifier(WebViewModifier())
-                        .padding(.top, isShowingSidebar ? -12 : 14)
                 }
             }
+            
         }
         .toolbar {
             Group {
@@ -70,5 +68,7 @@ struct ContentView: View {
 }
 
 #Preview {
+    @Previewable @State var browser: Browser = Browser()
     ContentView()
+        .environment(\.browser, browser)
 }

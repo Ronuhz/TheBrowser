@@ -12,8 +12,8 @@ struct WebViewModifier: ViewModifier {
         content
             .clipShape(RoundedRectangle(cornerRadius: 4))
             .padding(10)
-            .padding(.top, -26) // 26 - toolbar used, 38 toolbar empty
-            .frame(maxWidth: .infinity)
+            .padding(.top, -38) // makes top padding equal to trailing, bottom and leading (18 px)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .shadow(color: .black.opacity(0.4), radius: 5)
     }
 }

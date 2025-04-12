@@ -11,7 +11,7 @@ import WebKit
 struct Tab: Identifiable, Equatable {
     let id: UUID = UUID()
     
-    var title: String = "Loading..."
+    #warning("Open Link overrides other tab's favicon")
     var favicon: URL? = nil
     var url: URL
     var webView: WKWebView? = WKWebView()
