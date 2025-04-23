@@ -11,15 +11,19 @@ import WebKit
 struct Tab: Identifiable, Equatable {
     let id: UUID = UUID()
     
-    #warning("Open Link overrides other tab's favicon")
     var favicon: URL? = nil
     var url: URL
-    var webView: WKWebView? = WKWebView()
+    weak var webView: WKWebView?
     
     var hasLoaded: Bool = false
     var isLoading: Bool = false
     
     static func == (lhs: Tab, rhs: Tab) -> Bool {
         lhs.id == rhs.id
+    }
+    
+    init(url: URL) {
+        self.url = url
+        print("Tab created!")
     }
 }

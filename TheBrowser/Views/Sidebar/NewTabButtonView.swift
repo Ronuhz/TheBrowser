@@ -10,6 +10,8 @@ import SwiftUI
 struct NewTabButtonView: View {
     @Environment(\.browser) private var browser
     
+    @State private var isHoveringOverNewTabButton: Bool = false
+    
     var body:    some View {
         Button {
             browser.isSearchBarOpen = true
@@ -22,7 +24,13 @@ struct NewTabButtonView: View {
             }
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 3)
             .contentShape(Rectangle())
+            .background(.gray.opacity(isHoveringOverNewTabButton ? 0.1 : 0))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .onHover { value in
+                isHoveringOverNewTabButton = value
+            }
         }
         .buttonStyle(.plain)
     }

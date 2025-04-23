@@ -71,7 +71,6 @@ struct FloatingSearchBarView: View {
                             VStack {
                                 ForEach(searchSuggestions, id: \.self) { suggestion in
                                     SearchSuggestionView(for: suggestion)
-#warning("make it selectible by keyboard (tab and arrows)")
                                 }
                             }
                             .padding(.bottom, 12)
@@ -79,7 +78,7 @@ struct FloatingSearchBarView: View {
                     }
                     .padding(.horizontal, 12)
                     .frame(maxWidth: 700)
-                    .background(.regularMaterial)
+                    .background(.ultraThickMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .overlay {
                         RoundedRectangle(cornerRadius: 12)

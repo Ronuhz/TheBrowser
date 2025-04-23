@@ -15,12 +15,28 @@ struct TheBrowserApp: App {
 //        multiple windows disabled for now, because of conflicting behaviour between them
         Window("TheBrowser", id: "main") {
             ContentView()
-                .containerBackground(.thinMaterial, for: .window)
+                .containerBackground(.thickMaterial, for: .window)
                 .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
-                .toolbarVisibility(browser.isSidebarOpen ? .visible : .hidden, for: .windowToolbar)
+                .toolbarVisibility(browser.isSidebarOpen || browser.isSidebarPeeking ? .visible : .hidden, for: .windowToolbar)
                 .overlay {
                     FloatingSearchBarView()
                 }
+                .onOpenURL { url in
+                    browser.addTab(url: url)
+                    browser.isSearchBarOpen = false
+                }
+//            asks the user to set it as the Default Web Browser
+//                .onAppear {
+//                    let appURL = Bundle.main.bundleURL
+//                        
+//                    NSWorkspace.shared.setDefaultApplication(at: appURL, toOpenURLsWithScheme: "https") { error in
+//                        dump(error)
+//                    }
+//                    NSWorkspace.shared.setDefaultApplication(at: appURL, toOpenURLsWithScheme: "http") { error in
+//                        dump(error)
+//                    }
+//
+//                }
         }
         .environment(\.browser, browser)
         .windowStyle(.hiddenTitleBar)
@@ -56,6 +72,20 @@ struct TheBrowserApp: App {
                     }
                 }
                 .keyboardShortcut("s", modifiers: .command)
+                
+                Button("Copy URL") {
+                    browser.copyCurrentTabURLToClipboard()
+                }
+                .keyboardShortcut("c", modifiers: [.command, .shift])
+                
+                Button("Find on Page") {
+                    guard let _ = browser.getCurrentTab() else { return }
+                    
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        browser.isShowingFindOnCurrentPageUI.toggle()
+                    }
+                }
+                .keyboardShortcut("f", modifiers: .command)
             }
         }
     }

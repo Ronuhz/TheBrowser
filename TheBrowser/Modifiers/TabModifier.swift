@@ -22,5 +22,6 @@ struct TabModifier: ViewModifier {
             .padding(10)
             .background(.gray.opacity(isSelected ? 0.6 : isHoveringOverTabButton ? 0.1 : 0))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .contentShape(Rectangle())
     }
 }

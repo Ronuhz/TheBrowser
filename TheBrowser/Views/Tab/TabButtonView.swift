@@ -38,9 +38,7 @@ struct TabButtonView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .frame(maxWidth: .infinity)
             .modifier(TabModifier(isSelected, isHoveringOverTabButton))
-            .contentShape(Rectangle())
             .onHover { value in
                 isHoveringOverTabButton = value
             }

@@ -11,23 +11,25 @@ struct SearchBarView: View {
     @Environment(\.browser) private var browser
     @State private var addressBarText: String = ""
     
-    @State private var isShowingWebsiteSettingsPopover: Bool = false
+    @State private var isShowingSiteSettingsPopover: Bool = false
     
     var body: some View {
         @Bindable var browser = browser
 
         HStack {
-            TextField("Search or Enter URL...",text: $browser.addressBarText)
+            TextField("Search or Enter URL...",text: .constant(""))
                 .disabled(true)
             #warning("Disabled until editing is implemented")
             
-            Button("Website Settings", systemImage: "switch.2") {
-                isShowingWebsiteSettingsPopover.toggle()
-            }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.plain)
-            .popover(isPresented: $isShowingWebsiteSettingsPopover, arrowEdge: .bottom) {
-                WebsiteSettingsView()
+            if browser.getCurrentTab() != nil {
+                Button("Website Settings", systemImage: "switch.2") {
+                    isShowingSiteSettingsPopover.toggle()
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .popover(isPresented: $isShowingSiteSettingsPopover, arrowEdge: .bottom) {
+                    SiteSettingsView()
+                }
             }
         }
         .onSubmit {

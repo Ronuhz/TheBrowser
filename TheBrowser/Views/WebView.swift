@@ -26,7 +26,9 @@ struct WebView: NSViewRepresentable {
         wkWebView.allowsMagnification = true
         wkWebView.allowsBackForwardNavigationGestures = true
         wkWebView.configuration.preferences.isElementFullscreenEnabled = true
+        wkWebView.allowsLinkPreview = true
         wkWebView.navigationDelegate = context.coordinator
+        wkWebView.uiDelegate = context.coordinator
         wkWebView.isInspectable = true
         wkWebView.customUserAgent = """
                 Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
@@ -52,7 +54,7 @@ struct WebView: NSViewRepresentable {
     func updateNSView(_ webView: WKWebView, context: Context) {
         webView.isHidden = browser.selectedTab != tab.id
         // Check if the URL has changed and reload if needed
-        if webView.url != tab.url && !tab.hasLoaded{
+        if webView.url != tab.url && !tab.hasLoaded {
             let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60)
             webView.load(request)
             DispatchQueue.main.async {
@@ -65,7 +67,7 @@ struct WebView: NSViewRepresentable {
         Coordinator(self)
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate {
+    class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         var parent: WebView
         
         init(_ parent: WebView) {
@@ -98,6 +100,7 @@ struct WebView: NSViewRepresentable {
             loadFavicon(webView)
         }
         
+//        MARK: - NAVIGATION
 //        MARK: - Early Navigation Starts
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
            startNavigation(webView)
@@ -135,5 +138,100 @@ struct WebView: NSViewRepresentable {
                 }
                 decisionHandler(.allow)
             }
+        
+//        MARK: - JAVASCRIPT ALERTS
+//        MARK: - alert("Hello, World!");
+        func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async {
+            await withCheckedContinuation { continuation in
+                let alert = NSAlert()
+                alert.messageText = "\(webView.url?.host ?? "Website") says"
+                alert.informativeText = message
+                alert.addButton(withTitle: "OK")
+                
+                if let window = NSApplication.shared.keyWindow {
+                    alert.beginSheetModal(for: window) { _ in
+                        continuation.resume()
+                    }
+                } else {
+                    _ = alert.runModal()
+                    continuation.resume()
+                }
+            }
+        }
+        
+//        MARK: - confirm("Press a button!");
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async -> Bool {
+            await withCheckedContinuation { continuation in
+                    let alert = NSAlert()
+                    alert.messageText = "\(webView.url?.host ?? "Website") says"
+                    alert.informativeText = message
+                    alert.addButton(withTitle: "OK")
+                    alert.addButton(withTitle: "Cancel")
+                    
+                    if let window = NSApplication.shared.keyWindow {
+                        alert.beginSheetModal(for: window) { response in
+                            let confirmed = (response == .alertFirstButtonReturn)
+                            continuation.resume(returning: confirmed)
+                        }
+                    } else {
+                        let response = alert.runModal()
+                        let confirmed = (response == .alertFirstButtonReturn)
+                        continuation.resume(returning: confirmed)
+                    }
+                }
+            
+            
+        }
+        
+//        MARK: - prompt("Please enter your name:", "Hunor");
+        func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo) async -> String? {
+            await withCheckedContinuation { continuation in
+                let alert = NSAlert()
+                alert.messageText = "\(webView.url?.host ?? "Website") says"
+                alert.informativeText = prompt
+                
+                let inputTextField = NSTextField(string: "")
+                inputTextField.stringValue = defaultText ?? ""
+                inputTextField.frame = NSRect(x: 0, y: 0, width: 230, height: 24)
+                alert.accessoryView = inputTextField
+                
+                alert.addButton(withTitle: "OK")
+                alert.addButton(withTitle: "Cancel")
+                
+                if let window = NSApplication.shared.keyWindow {
+                    alert.beginSheetModal(for: window) { response in
+                        if response == .alertFirstButtonReturn {
+                            continuation.resume(returning: inputTextField.stringValue)
+                        } else {
+                            continuation.resume(returning: nil)
+                        }
+                    }
+                } else {
+                    let response = alert.runModal()
+                    if response == .alertFirstButtonReturn {
+                        continuation.resume(returning: inputTextField.stringValue)
+                    } else {
+                        continuation.resume(returning: nil)
+                    }
+                }
+            }
+        }
+    }
+}
+
+//MARK: - WKWebView Extensions
+extension WKWebView {
+//    MARK: - Clear All Cookies
+    func clearCookies() {
+        HTTPCookieStorage.shared.removeCookies(since: Date.distantPast)
+    }
+    
+//    MARK: - Clear All Cache
+    func clearCache() async {
+        let records = await WKWebsiteDataStore.default().dataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes())
+        for record in records {
+            await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: [record])
+            print("Removed data record for \(record.displayName)")
+        }
     }
 }

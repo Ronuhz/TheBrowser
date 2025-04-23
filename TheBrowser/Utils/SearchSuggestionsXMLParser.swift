@@ -11,14 +11,14 @@ extension FloatingSearchBarView {
     class SearchSuggestionsXMLParser: NSObject, XMLParserDelegate {
         var suggestions = [String]()
         
-        /// Called when the parser starts an element.
-        /// If the element is "suggestion", the "data" attribute is extracted and saved.
+//        Called when the parser starts an element
+//        If the element is "suggestion", the "data" attribute is extracted and saved
         func parser(_ parser: XMLParser,
                     didStartElement elementName: String,
                     namespaceURI: String?,
                     qualifiedName qName: String?,
                     attributes attributeDict: [String: String] = [:]) {
-            // Check for the "suggestion" element and extract its "data" attribute.
+//            Check for the "suggestion" element and extract its "data" attribute
             if elementName == "suggestion",
                let dataValue = attributeDict["data"] {
                 suggestions.append(dataValue)
@@ -37,7 +37,7 @@ extension FloatingSearchBarView {
         let searchSuggestionsXMLParser = SearchSuggestionsXMLParser()
         parser.delegate = searchSuggestionsXMLParser
         
-        // Parse the XML data.
+//        Parse the XML data.
         if parser.parse() {
             return searchSuggestionsXMLParser.suggestions
         } else {

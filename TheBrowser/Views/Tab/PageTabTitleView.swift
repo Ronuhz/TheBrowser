@@ -22,13 +22,10 @@ struct PageTabTitleView: View {
     }
     
     var body: some View {
-        if let title, title.isEmpty == false {
-            Text(title)
-                .lineLimit(1)
-        } else {
-            PageLoadingTabAnimationView()
-                .padding(.leading, 10)
-        }
+        Text(title != nil && title!.isEmpty == false ? title! : "Untitled")
+            .lineLimit(1)
+            .contentTransition(.numericText())
+            .animation(.default, value: title)
     }
 }
 
