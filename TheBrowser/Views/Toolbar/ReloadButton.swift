@@ -15,16 +15,21 @@ struct ReloadButton: View {
         return currentTab.isLoading ? "xmark" : "arrow.clockwise"
     }
     
+    @State private var isRotating = false
+    
     var body: some View {
         Button {
             if icon == "xmark" {
+                isRotating = false
                 browser.stopLoadingCurrentTab()
             } else {
+                isRotating.toggle()
                 browser.reloadCurrentTab()
             }
         } label: {
             Label("Reload", systemImage: icon)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .centerFirstTextBaseline)
+                .symbolEffect(.rotate, value: isRotating)
         }
         .contentTransition(.symbolEffect(.replace))
         .font(.title3)

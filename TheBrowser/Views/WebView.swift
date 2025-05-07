@@ -21,6 +21,9 @@ struct WebView: NSViewRepresentable {
         config.websiteDataStore = .default()
         config.suppressesIncrementalRendering = false
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
+        config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        config.mediaTypesRequiringUserActionForPlayback = []
+        
         
         let wkWebView = WKWebView(frame: .zero, configuration: config)
         wkWebView.allowsMagnification = true
@@ -73,6 +76,17 @@ struct WebView: NSViewRepresentable {
         init(_ parent: WebView) {
             self.parent = parent
         }
+        
+        #warning("clean this up")
+        func webView(_ webView: WKWebView,
+                         requestMediaCapturePermissionFor origin: WKSecurityOrigin,
+                         initiatedByFrame frame: WKFrameInfo,
+                         type: WKMediaCaptureType,
+                         decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+
+                print("Media capture request from \(origin.host) for \(type)")
+                decisionHandler(.grant)
+            }
         
 //        MARK: - Favicon, Title and Navigation Helpers
         func loadFavicon(_ webView: WKWebView) {

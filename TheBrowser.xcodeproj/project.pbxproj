@@ -278,9 +278,9 @@
 				INFOPLIST_FILE = TheBrowser/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TheBrowser;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSCameraUsageDescription = "If you want to use the camera, you have to give permission.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera for websites that request it.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "If you want to use the microphone, you have to give permission.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for websites that request it.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -313,9 +313,9 @@
 				INFOPLIST_FILE = TheBrowser/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = TheBrowser;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
-				INFOPLIST_KEY_NSCameraUsageDescription = "If you want to use the camera, you have to give permission.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera for websites that request it.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "If you want to use the microphone, you have to give permission.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need access to your microphone for websites that request it.";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
