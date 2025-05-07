@@ -88,13 +88,25 @@ struct WebView: NSViewRepresentable {
                 decisionHandler(.grant)
             }
         
-//        MARK: - Favicon, Title and Navigation Helpers
+        //        MARK: - Favicon, Title and Navigation Helpers
         func loadFavicon(_ webView: WKWebView) {
             if let baseURL = webView.url, let host = baseURL.host {
-                let defaultFavicon = URL(string: "https://\(host)/favicon.ico")
-                if self.parent.tab.favicon != defaultFavicon {
-                    DispatchQueue.main.async {
-                        self.parent.tab.favicon = defaultFavicon
+                // handles cases when the favicon does not exist at normal URL
+                webView.evaluateJavaScript(
+                    "document.querySelector(\"link[rel~='icon']\")?.href"
+                ) { result, error in
+                    if let value = result as? String {
+                        DispatchQueue.main.async {
+                            self.parent.tab.favicon = URL(string: value)
+                        }
+                    } else {
+                        let defaultFavicon = URL(
+                            string: "https://\(host)/favicon.ico")
+                        if self.parent.tab.favicon != defaultFavicon {
+                            DispatchQueue.main.async {
+                                self.parent.tab.favicon = defaultFavicon
+                            }
+                        }
                     }
                 }
             }
