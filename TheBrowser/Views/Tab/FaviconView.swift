@@ -16,32 +16,56 @@ struct FaviconView: View {
     
     @Environment(\.browser) private var browser
     
+    var currentTab: Tab? {
+        browser.findTabRecursive(id: tabID, in: browser.sidebarItems)
+    }
+    
     var faviconURL: URL? {
-        guard let currentTab = browser.tabs.first(where: { $0.id == tabID }) else { return nil }
-        return currentTab.favicon
+        currentTab?.favicon
+    }
+    
+    var iconFromTab: Image? {
+        currentTab?.icon
     }
     
     var body: some View {
-        if let faviconURL {
-            AsyncImage(url: faviconURL) { image in
+        if let icon = iconFromTab {
+            icon
+                .resizable()
+                .frame(width: 16, height: 16)
+        } else if let favURL = faviconURL {
+            AsyncImage(url: favURL) { image in
                 image
                     .resizable()
                     .frame(width: 16, height: 16)
             } placeholder: {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(.secondary.opacity(0.2))
+                Image(systemName: "doc.text")
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: 16, height: 16)
+                    .opacity(0.5)
             }
         } else {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(.secondary.opacity(0.2))
+            Image(systemName: "doc.text")
+                .resizable()
+                .scaledToFit()
                 .frame(width: 16, height: 16)
+                .opacity(0.5)
         }
     }
 }
 
 #Preview {
-    @Previewable @State var browser: Browser = Browser()
-    FaviconView(for: .init())
-        .environment(\.browser, browser)
+    @Previewable @State var browserPreview: Browser = {
+        let browser = Browser()
+        if browser.allTabs.isEmpty {
+            browser.addTab(url: URL(string: "https://example.com")!, name: "Preview Tab")
+        }
+        return browser
+    }()
+    
+    let previewTabID: Tab.ID = browserPreview.allTabs.first?.id ?? UUID()
+
+    return FaviconView(for: previewTabID)
+        .environment(\.browser, browserPreview)
 }

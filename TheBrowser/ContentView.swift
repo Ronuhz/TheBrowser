@@ -7,75 +7,89 @@
 
 import SwiftUI
 
+/// The main content view for the browser window.
+///
+/// This view arranges the sidebar, the web view area, and overlays like the search bar.
 struct ContentView: View {
+    /// Access to the shared browser state and functionality.
     @Environment(\.browser) private var browser
-    @State private var text = ""
+    // @State private var text = "" // This seems unused, consider removing if truly not needed.
+    /// Namespace for sidebar animations (currently unused but kept for potential future use).
     @Namespace private var sidebarNamespace
     
     var body: some View {
-        @Bindable var browser = browser
+        @Bindable var browser = browser // Required for bindings ($browser.property) used by child views.
+
         ZStack {
             HStack {
-//                MARK: - Sidebar
+                // Sidebar (conditionally shown)
                 if browser.isSidebarOpen {
                     SidebarView()
-                        .modifier(OpenSidebarViewModifier())
+                        .modifier(OpenSidebarViewModifier()) // Assumes this modifier handles transitions/appearance
                 }
                 
-//                MARK: - WebViews
-                if !browser.tabs.isEmpty {
+                // Web View Content Area
+                // Displays the active web view or a placeholder if no tabs exist.
+                Group {
+                    if !browser.allTabs.isEmpty {
                     ZStack {
-                        ForEach($browser.tabs) { $tab in
-                            WebView(tab: $tab)
-                                .modifier(WebViewModifier())
-                                .opacity(browser.selectedTab != tab.id ? 0 : 1)
-                                .allowsHitTesting(browser.selectedTab == tab.id)
-                                .zIndex(browser.selectedTab == tab.id ? 1 : -10)
+                            // Create WebView for each tab; opacity/zIndex control visibility.
+                            ForEach(browser.allTabs) { tab in
+                                WebView(tab: tab)
+                                    .modifier(WebViewModifier()) // Assumes this handles webview appearance/padding
+                                    .opacity(browser.selectedTabID != tab.id ? 0 : 1)
+                                    .allowsHitTesting(browser.selectedTabID == tab.id)
+                                    .zIndex(browser.selectedTabID == tab.id ? 1 : -10)
                         }
-                        
                     }
                 } else {
+                        // Placeholder view when there are no tabs.
                     RoundedRectangle(cornerRadius: 4)
                         .fill(.regularMaterial)
                         .modifier(WebViewModifier())
                 }
+                }
             }
             
-//            MARK: - Peeking Sidebar
-            if browser.isSidebarOpen == false {
-                PeekingSidebarView()
+            // Peeking Sidebar (conditionally shown)
+            if !browser.isSidebarOpen {
+                PeekingSidebarView() // Assumes this handles the peeking interaction
             }
             
+            // Overlays (Find Bar, Notifications)
             VStack {
-//            MARK: - Find On Page
                 if browser.isShowingFindOnCurrentPageUI {
                     FindOnPageBarView()
                 }
                 
-//            MARK: - Current Tab's URL Copied Notification
                 if browser.isShowingCurrentTabURLCopiedNotification {
                     CurrentTabURLCopiedNotificationView(isVisible: $browser.isShowingCurrentTabURLCopiedNotification)
-                        .id(browser.currentTabURLCopiedNotificationID)
+                        .id(browser.currentTabURLCopiedNotificationID) // Use ID for transition identity
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-            .padding(.top, -38)
+            .padding(.top, -38) // Adjust positioning as needed
             .padding()
         }
         .toolbar {
+            // Standard toolbar items
             Group {
                 ToggleSidebarButtonView()
                 GoBackButtonView()
                 GoForwardButtonView()
                 ReloadButton()
             }
-            .padding(.top, 3)
+            .padding(.top, 3) // Adjust positioning as needed
         }
     }
 }
 
 #Preview {
-    @Previewable @State var browser: Browser = Browser()
+    @Previewable @State var browserPreview: Browser = {
+        let browser = Browser()
+        return browser
+    }()
+    
     ContentView()
-        .environment(\.browser, browser)
+        .environment(\.browser, browserPreview)
 }

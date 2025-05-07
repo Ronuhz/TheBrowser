@@ -16,21 +16,41 @@ struct PageTabTitleView: View {
         self.tabID = tabID
     }
 
-    var title: String? {
-        guard let currentTab = browser.tabs.first(where: { $0.id == tabID }) else { return nil }
-        return currentTab.webView?.title
+    var currentTab: Tab? {
+        browser.findTabRecursive(id: tabID, in: browser.sidebarItems)
+    }
+
+    var titleToDisplay: String {
+        if let tab = currentTab {
+            if !tab.name.isEmpty && tab.name != "New Tab" {
+                return tab.name
+            } else if let webViewTitle = tab.webView?.title, !webViewTitle.isEmpty {
+                return webViewTitle
+            }
+            return tab.name
+        }
+        return "Untitled"
     }
     
     var body: some View {
-        Text(title != nil && title!.isEmpty == false ? title! : "Untitled")
+        Text(titleToDisplay)
             .lineLimit(1)
             .contentTransition(.numericText())
-            .animation(.default, value: title)
+            .animation(.default, value: titleToDisplay)
     }
 }
 
 #Preview {
-    @Previewable @State var browser: Browser = Browser()
-    PageTabTitleView(for: .init())
-        .environment(\.browser, browser)
+    @Previewable @State var browserPreview: Browser = {
+        let browser = Browser()
+        if browser.allTabs.isEmpty {
+            browser.addTab(url: URL(string: "https://example.com")!, name: "Preview Tab Title")
+        }
+        return browser
+    }()
+    
+    let previewTabID: Tab.ID = browserPreview.allTabs.first?.id ?? UUID()
+
+    return PageTabTitleView(for: previewTabID)
+        .environment(\.browser, browserPreview)
 }

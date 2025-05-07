@@ -9,11 +9,18 @@ import Observation
 import SwiftUI
 import WebKit
 
+/// A SwiftUI view that wraps a `WKWebView` to display web content for a given `Tab`.
 struct WebView: NSViewRepresentable {
+    /// A shared process pool for all web views to potentially share resources.
     static let sharedProcessPool = WKProcessPool()
     
-    @Binding var tab: Tab
+    /// The `Tab` object containing the URL and state for this web view.
+    /// Passed as a non-binding let because `Tab` is an `@Observable` class.
+    let tab: Tab
+    /// Access to the shared browser state.
     @Environment(\.browser) private var browser
+
+    // MARK: - NSViewRepresentable
 
     func makeNSView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -23,7 +30,6 @@ struct WebView: NSViewRepresentable {
         config.preferences.javaScriptCanOpenWindowsAutomatically = true
         config.preferences.setValue(true, forKey: "developerExtrasEnabled")
         config.mediaTypesRequiringUserActionForPlayback = []
-        
         
         let wkWebView = WKWebView(frame: .zero, configuration: config)
         wkWebView.allowsMagnification = true
@@ -39,30 +45,31 @@ struct WebView: NSViewRepresentable {
                 Version/18.4 Safari/605.1.15
                 """
         
+        // Load initial request if needed
         let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60)
         if !tab.hasLoaded {
             wkWebView.load(request)
-            DispatchQueue.main.async {
-                tab.hasLoaded = true
-            }
+            tab.hasLoaded = true // Update state on the @Observable Tab object
         }
         
-        DispatchQueue.main.async {
-            tab.webView = wkWebView
-        }
+        tab.webView = wkWebView // Assign the web view reference back to the Tab object
         
         return wkWebView
     }
     
     func updateNSView(_ webView: WKWebView, context: Context) {
-        webView.isHidden = browser.selectedTab != tab.id
-        // Check if the URL has changed and reload if needed
-        if webView.url != tab.url && !tab.hasLoaded {
+        // Hide the web view if its tab is not the selected one.
+        webView.isHidden = browser.selectedTabID != tab.id
+        
+        // Reload if the URL has changed programmatically and hasn't loaded yet
+        if let currentWebViewURL = webView.url, currentWebViewURL != tab.url, !tab.hasLoaded {
             let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60)
             webView.load(request)
-            DispatchQueue.main.async {
+            tab.hasLoaded = true
+        } else if webView.url == nil && !tab.url.absoluteString.isEmpty && !tab.hasLoaded {
+            let request = URLRequest(url: tab.url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60)
+            webView.load(request)
                 tab.hasLoaded = true
-            }
         }
     }
     
@@ -70,6 +77,9 @@ struct WebView: NSViewRepresentable {
         Coordinator(self)
     }
     
+    // MARK: - Coordinator
+    
+    /// Acts as the delegate for the `WKWebView`, handling navigation and UI events.
     class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         var parent: WebView
         
@@ -77,73 +87,96 @@ struct WebView: NSViewRepresentable {
             self.parent = parent
         }
         
-        #warning("clean this up")
+        // MARK: Delegate Methods
+        
+        // TODO: Review media capture permissions if needed for specific features.
+        // #warning("clean this up") // Removed warning
         func webView(_ webView: WKWebView,
                          requestMediaCapturePermissionFor origin: WKSecurityOrigin,
                          initiatedByFrame frame: WKFrameInfo,
                          type: WKMediaCaptureType,
                          decisionHandler: @escaping (WKPermissionDecision) -> Void) {
-
                 print("Media capture request from \(origin.host) for \(type)")
+                // Granting permission by default - review security implications.
                 decisionHandler(.grant)
             }
         
-//        MARK: - Favicon, Title and Navigation Helpers
+        /// Attempts to load the favicon URL for the current page.
         func loadFavicon(_ webView: WKWebView) {
             if let baseURL = webView.url, let host = baseURL.host {
+                // Construct a common favicon URL pattern.
                 let defaultFavicon = URL(string: "https://\(host)/favicon.ico")
+                // Update the parent Tab's favicon URL if different.
                 if self.parent.tab.favicon != defaultFavicon {
-                    DispatchQueue.main.async {
                         self.parent.tab.favicon = defaultFavicon
-                    }
                 }
             }
         }
+        
+        /// Updates tab state when navigation starts.
         func startNavigation(_ webView: WKWebView) {
-            DispatchQueue.main.async {
                 self.parent.tab.isLoading = true
-            }
-            
-            loadFavicon(webView)
-        }
-        func navigationCompleted(_ webView: WKWebView) {
-            DispatchQueue.main.async {
-                self.parent.tab.isLoading = false
-            }
-            
-            loadFavicon(webView)
+            loadFavicon(webView) // Attempt to load favicon early
         }
         
-//        MARK: - NAVIGATION
-//        MARK: - Early Navigation Starts
+        /// Updates tab state when navigation completes (successfully or with failure).
+        func navigationCompleted(_ webView: WKWebView) {
+                self.parent.tab.isLoading = false
+            loadFavicon(webView) // Ensure favicon is loaded/updated
+            
+            // Update the tab name from the page title if available
+            if let pageTitle = webView.title, !pageTitle.isEmpty {
+                if self.parent.tab.name != pageTitle {
+                    self.parent.tab.name = pageTitle
+                }
+            }
+        }
+        
+        // MARK: WKNavigationDelegate
+        
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
            startNavigation(webView)
         }
         
-//        MARK: - Early Navigation Redirect
         func webView(_ webView: WKWebView, didReceiveServerRedirectForProvisionalNavigation navigation: WKNavigation!) {
             startNavigation(webView)
+            // Load the redirected URL if needed (WKWebView often handles this, but explicit load can be safer)
             if let url = webView.url {
                 self.parent.tab.webView?.load(URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 60))
             }
         }
         
-//        MARK: - Successful Navigation
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             navigationCompleted(webView)
         }
         
-//        MARK: - Failed Navigation
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
             navigationCompleted(webView)
+            print("Navigation failed: \(error.localizedDescription)")
         }
         
-//        MARK: - Early Navigation failed
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             navigationCompleted(webView)
+             print("Provisional navigation failed: \(error.localizedDescription)")
         }
         
-//        MARK: - Open link in New Tab
+        // MARK: WKUIDelegate
+        
+        /// Handles requests to open new windows (e.g., links with `target="_blank"`).
+        /// Creates a new tab in the browser for the requested URL.
+        func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+            // If a link would open a new window, open it in a new tab instead.
+            if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
+                 self.parent.browser.addTab(url: url) // Use the Browser environment object to add a tab
+            }
+            // Return nil because we are handling the new window creation manually by opening a tab.
+            return nil
+        }
+
+        // Decide policy for navigation actions (e.g., opening links in new tabs)
+        // This was originally used in example, but createWebViewWith is more standard for target=_blank.
+        // Keep for reference or other policy decisions if needed.
+        /*
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
                 if navigationAction.targetFrame == nil {
                     if let url = navigationAction.request.url {
@@ -152,20 +185,40 @@ struct WebView: NSViewRepresentable {
                 }
                 decisionHandler(.allow)
             }
+        */
         
-//        MARK: - JAVASCRIPT ALERTS
-//        MARK: - alert("Hello, World!");
+        // JavaScript Alerts (alert, confirm, prompt)
+        
         func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async {
+            // Implementation using NSAlert...
+            await NSAlert.runModalAlert(host: webView.url?.host, message: message)
+        }
+        
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async -> Bool {
+             // Implementation using NSAlert...
+            await NSAlert.runModalConfirm(host: webView.url?.host, message: message)
+        }
+        
+        func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo) async -> String? {
+             // Implementation using NSAlert...
+            await NSAlert.runModalInput(host: webView.url?.host, prompt: prompt, defaultText: defaultText)
+        }
+    }
+}
+
+// MARK: - NSAlert Helpers (Example)
+// Consider moving these helpers to a separate Utility file.
+extension NSAlert {
+    /// Helper to run a simple modal alert.
+    static func runModalAlert(host: String?, message: String) async {
             await withCheckedContinuation { continuation in
                 let alert = NSAlert()
-                alert.messageText = "\(webView.url?.host ?? "Website") says"
+            alert.messageText = "\(host ?? "Website") says"
                 alert.informativeText = message
                 alert.addButton(withTitle: "OK")
                 
                 if let window = NSApplication.shared.keyWindow {
-                    alert.beginSheetModal(for: window) { _ in
-                        continuation.resume()
-                    }
+                alert.beginSheetModal(for: window) { _ in continuation.resume() }
                 } else {
                     _ = alert.runModal()
                     continuation.resume()
@@ -173,79 +226,62 @@ struct WebView: NSViewRepresentable {
             }
         }
         
-//        MARK: - confirm("Press a button!");
-        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo) async -> Bool {
+    /// Helper to run a confirmation modal alert.
+    static func runModalConfirm(host: String?, message: String) async -> Bool {
             await withCheckedContinuation { continuation in
                     let alert = NSAlert()
-                    alert.messageText = "\(webView.url?.host ?? "Website") says"
+                alert.messageText = "\(host ?? "Website") says"
                     alert.informativeText = message
                     alert.addButton(withTitle: "OK")
                     alert.addButton(withTitle: "Cancel")
                     
                     if let window = NSApplication.shared.keyWindow {
                         alert.beginSheetModal(for: window) { response in
-                            let confirmed = (response == .alertFirstButtonReturn)
-                            continuation.resume(returning: confirmed)
+                        continuation.resume(returning: response == .alertFirstButtonReturn)
                         }
                     } else {
                         let response = alert.runModal()
-                        let confirmed = (response == .alertFirstButtonReturn)
-                        continuation.resume(returning: confirmed)
-                    }
+                    continuation.resume(returning: response == .alertFirstButtonReturn)
                 }
-            
-            
+            }
         }
         
-//        MARK: - prompt("Please enter your name:", "Hunor");
-        func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo) async -> String? {
+    /// Helper to run an input modal alert.
+    static func runModalInput(host: String?, prompt: String, defaultText: String?) async -> String? {
             await withCheckedContinuation { continuation in
                 let alert = NSAlert()
-                alert.messageText = "\(webView.url?.host ?? "Website") says"
+            alert.messageText = "\(host ?? "Website") says"
                 alert.informativeText = prompt
-                
-                let inputTextField = NSTextField(string: "")
-                inputTextField.stringValue = defaultText ?? ""
+            let inputTextField = NSTextField(string: defaultText ?? "")
                 inputTextField.frame = NSRect(x: 0, y: 0, width: 230, height: 24)
                 alert.accessoryView = inputTextField
-                
                 alert.addButton(withTitle: "OK")
                 alert.addButton(withTitle: "Cancel")
                 
                 if let window = NSApplication.shared.keyWindow {
                     alert.beginSheetModal(for: window) { response in
-                        if response == .alertFirstButtonReturn {
-                            continuation.resume(returning: inputTextField.stringValue)
-                        } else {
-                            continuation.resume(returning: nil)
-                        }
+                    continuation.resume(returning: response == .alertFirstButtonReturn ? inputTextField.stringValue : nil)
                     }
                 } else {
                     let response = alert.runModal()
-                    if response == .alertFirstButtonReturn {
-                        continuation.resume(returning: inputTextField.stringValue)
-                    } else {
-                        continuation.resume(returning: nil)
-                    }
-                }
+                continuation.resume(returning: response == .alertFirstButtonReturn ? inputTextField.stringValue : nil)
             }
         }
     }
 }
 
 //MARK: - WKWebView Extensions
+// These should likely move to their own Extensions file.
 extension WKWebView {
-//    MARK: - Clear All Cookies
+    /// Clears all cookies from the shared HTTP cookie storage.
     func clearCookies() {
         HTTPCookieStorage.shared.removeCookies(since: Date.distantPast)
     }
     
-//    MARK: - Clear All Cache
+    /// Clears website data cache.
     func clearCache() async {
         let records = await WKWebsiteDataStore.default().dataRecords(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes())
-        for record in records {
-            await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: [record])
-            print("Removed data record for \(record.displayName)")
-        }
+        _ = await WKWebsiteDataStore.default().removeData(ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), for: records)
+        print("Cleared \(records.count) website data records.")
     }
 }

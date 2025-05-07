@@ -13,15 +13,12 @@ struct TabButtonView: View {
     @Environment(\.browser) private var browser
     
     var isSelected: Bool {
-        browser.selectedTab == tab.id
+        browser.selectedTabID == tab.id
     }
     
     @State private var isHoveringOverTabButton: Bool = false
     
     var body: some View {
-        Button {
-            browser.selectedTab = tab.id
-        } label: {
             HStack {
                 FaviconView(for: tab.id)
                             
@@ -30,25 +27,37 @@ struct TabButtonView: View {
                 Spacer()
                 
                 if isSelected || isHoveringOverTabButton {
-                    Button("Close", systemImage: "xmark") {
+                Button {
                         browser.closeTab(tab)
-                    }
+                } label: {
+                    Label("Close", systemImage: "xmark")
                     .fontWeight(.bold)
+                }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.plain)
+                .padding(.trailing, 5)
                 }
             }
             .modifier(TabModifier(isSelected, isHoveringOverTabButton))
-            .onHover { value in
-                isHoveringOverTabButton = value
-            }
+        .onHover { hovering in
+            isHoveringOverTabButton = hovering
         }
-        .buttonStyle(.plain)
     }
 }
 
 #Preview {
-    @Previewable @State var browser: Browser = Browser()
-    TabButtonView(tab: .init(url: URL(string: "https://www.apple.com/")!))
-        .environment(\.browser, browser)
+    @Previewable @State var browserPreview: Browser = {
+        let browser = Browser()
+        if browser.sidebarItems.first(where: { $0 is Tab }) == nil {
+            browser.addTab(url: URL(string: "https://example.com")!, name: "Example Preview")
+        }
+        return browser
+    }()
+    
+    let previewTab: Tab = browserPreview.allTabs.first ?? Tab(url: URL(string: "https://fallback.com")!)
+
+    return TabButtonView(tab: previewTab)
+        .environment(\.browser, browserPreview)
+        .padding()
+        .frame(width: 200)
 }
